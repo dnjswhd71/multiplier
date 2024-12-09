@@ -1,0 +1,99 @@
+// Booth Multiplier Implementation
+module booth_multiplier (
+    input  [3:0] multiplicand, // 4-bit multiplicand
+    input  [3:0] multiplier,   // 4-bit multiplier
+    output reg [7:0] product    // 8-bit product
+);
+    // Internal Registers
+    reg [7:0] M;      // Sign-extended multiplicand
+    reg [7:0] Q;      // Sign-extended multiplier
+    reg Q_minus1;     // Q-1
+    reg [3:0] count;   // Loop counter
+
+    integer i;
+
+    always @(*) begin
+        // Initialize
+        M = { {4{multiplicand[3]}}, multiplicand }; // Sign-extend multiplicand to 8 bits
+        Q = { {4{multiplier[3]}}, multiplier };     // Sign-extend multiplier to 8 bits
+        Q_minus1 = 0;                                // Initialize Q-1 to 0
+        product = 0;
+        count = 4; // Number of bits
+
+        // Booth's Algorithm
+        for (i = 0; i < count; i = i + 1) begin
+            case ({Q[0], Q_minus1})
+                2'b01: product = product + (M << i); // Add
+                2'b10: product = product - (M << i); // Subtract
+                default: ; // No operation
+            endcase
+            // Shift right arithmetic
+            {product, Q, Q_minus1} = {product[7], product, Q[0]};
+        end
+    end
+endmodule
+
+
+// Testbench for Booth Multiplier
+module booth_multiplier_tb;
+    // Inputs
+    reg [3:0] multiplicand;
+    reg [3:0] multiplier;
+
+    // Output
+    wire [7:0] product;
+
+    // Instantiate the Booth Multiplier
+    booth_multiplier uut (
+        .multiplicand(multiplicand),
+        .multiplier(multiplier),
+        .product(product)
+    );
+
+    // Test Vector Procedure
+    initial begin
+        // Monitor the changes
+        $monitor("Time = %0t | Multiplicand = %b (%0d) | Multiplier = %b (%0d) | Product = %b (%0d)",
+                 $time, multiplicand, $signed(multiplicand),
+                 multiplier, $signed(multiplier),
+                 product, $signed(product));
+
+        // Test Case 1: Positive * Positive
+        multiplicand = 4'b0011; // 3
+        multiplier   = 4'b0101; // 5
+        #10;
+
+        // Test Case 2: Positive * Negative
+        multiplicand = 4'b0110; // 6
+        multiplier   = 4'b1011; // -5
+        #10;
+
+        // Test Case 3: Negative * Positive
+        multiplicand = 4'b1101; // -3
+        multiplier   = 4'b0011; // 3
+        #10;
+
+        // Test Case 4: Negative * Negative
+        multiplicand = 4'b1010; // -6
+        multiplier   = 4'b1100; // -4
+        #10;
+
+        // Test Case 5: Zero * Positive
+        multiplicand = 4'b0000; // 0
+        multiplier   = 4'b0111; // 7
+        #10;
+
+        // Test Case 6: Positive * Zero
+        multiplicand = 4'b0111; // 7
+        multiplier   = 4'b0000; // 0
+        #10;
+
+        // Test Case 7: Zero * Zero
+        multiplicand = 4'b0000; // 0
+        multiplier   = 4'b0000; // 0
+        #10;
+
+        // Finish Simulation
+        $finish;
+    end
+endmodule
